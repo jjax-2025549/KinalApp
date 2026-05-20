@@ -1,6 +1,7 @@
 package com.julianjax.kinalapp.entity;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
 
 @Entity
@@ -12,17 +13,22 @@ public class Producto {
     @Column(name = "codigo_producto")
     private Long codigoProducto;
 
+    @NotBlank(message = "La descripción del producto no puede estar vacía")
+    @Size(min = 2, max = 200, message = "La descripción debe tener entre 2 y 200 caracteres")
     @Column(name = "descripcion")
     private String descripcion;
 
+    @NotNull(message = "El precio unitario es obligatorio")
+    @DecimalMin(value = "0.01", message = "El precio debe ser mayor a 0")
     @Column(name = "precio_unitario", precision = 10, scale = 2)
     private BigDecimal precioUnitario;
 
+    @NotNull(message = "El stock es obligatorio")
+    @Min(value = 0, message = "El stock no puede ser negativo")
     @Column(name = "stock")
     private Integer stock;
 
-    public Producto() {
-    }
+    public Producto() {}
 
     public Producto(Long codigoProducto, String descripcion, BigDecimal precioUnitario, Integer stock) {
         this.codigoProducto = codigoProducto;
@@ -31,7 +37,6 @@ public class Producto {
         this.stock = stock;
     }
 
-    // Getters y Setters
     public Long getCodigoProducto() { return codigoProducto; }
     public void setCodigoProducto(Long codigoProducto) { this.codigoProducto = codigoProducto; }
 

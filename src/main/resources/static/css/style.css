@@ -1,42 +1,113 @@
+/* Paleta de colores oficiales y fondo de la página */
 :root {
-    --kinal-dark: #212529;
-    --kinal-blue: #0d6efd;
+    --kinal-azul: #1a3c6e;
+    --kinal-dorado: #c8a84b;
+    --kinal-gris: #f4f6f9;
 }
 
 body {
-    background-color: #f8f9fa;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', sans-serif;
+    background-color: var(--kinal-gris);
 }
 
+/* Barra de navegación de arriba con el logo */
 .navbar {
-    background: linear-gradient(90deg, #212529 0%, #343a40 100%);
-    border-bottom: 3px solid var(--kinal-blue);
+    background: linear-gradient(135deg, var(--kinal-azul), #0d2347) !important;
+    border-bottom: 3px solid var(--kinal-dorado);
 }
 
-.card {
-    border-radius: 12px;
-    overflow: hidden;
-    transition: transform 0.2s;
-}
-
-.card:hover {
-    transform: translateY(-5px);
-}
-
-h3 {
+.navbar-brand {
+    color: var(--kinal-dorado) !important;
     font-weight: 700;
-    margin-bottom: 1.5rem;
-    text-transform: uppercase;
-    font-size: 1.1rem;
     letter-spacing: 1px;
 }
 
-.table thead {
-    border-bottom: 2px solid rgba(0,0,0,0.1);
+/* Bloques del menú principal con efecto al pasar el mouse */
+.section-card {
+    border-radius: 12px;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+    border: none;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
 }
 
-/* Para que la tabla 5 no se mire tan kilométrica */
-.table-responsive {
-    max-height: 400px;
-    overflow-y: auto;
+.section-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.section-card .card-body {
+    padding: 2rem;
+    text-align: center;
+}
+
+.section-card .icon-big {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Caja, encabezado y botón para las pantallas de Login y Registro */
+.auth-card {
+    max-width: 420px;
+    margin: 80px auto;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    border: none;
+}
+
+.auth-header {
+    background: linear-gradient(135deg, var(--kinal-azul), #0d2347);
+    border-radius: 16px 16px 0 0;
+    padding: 2rem;
+    text-align: center;
+}
+
+.auth-header h3 {
+    color: var(--kinal-dorado);
+    font-weight: 700;
+    margin: 0;
+}
+
+.auth-header p {
+    color: rgba(255,255,255,0.7);
+    margin: 0.5rem 0 0 0;
+    font-size: 0.9rem;
+}
+
+.btn-kinal {
+    background: linear-gradient(135deg, var(--kinal-azul), #0d2347);
+    border: none;
+    color: white;
+    border-radius: 8px;
+    padding: 0.7rem 1.5rem;
+    font-weight: 600;
+    width: 100%;
+    transition: opacity 0.2s;
+}
+
+.btn-kinal:hover { opacity: 0.9; color: white; }
+
+/* Etiquetas de color para diferenciar si es Admin o Usuario ordinario */
+.badge-admin { background-color: #dc3545; }
+.badge-user  { background-color: #0d6efd; }
+
+/* Diseño del encabezado para las tablas de datos */
+.table-header-kinal thead {
+    background: linear-gradient(135deg, var(--kinal-azul), #0d2347);
+    color: white;
+}
+
+/* Alertas visuales cuando un campo del formulario está mal llenado */
+.invalid-feedback { display: block; font-size: 0.82rem; }
+.is-invalid { border-color: #dc3545 !important; }
+
+/* Pantalla de error cuando un usuario no tiene permisos para entrar */
+.denied-box {
+    max-width: 500px;
+    margin: 100px auto;
+    text-align: center;
+    padding: 3rem;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
 }

@@ -1,24 +1,30 @@
 package com.julianjax.kinalapp.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 
 @Entity
 @Table(name = "clientes")
 public class Cliente {
 
     @Id
-    @Column(name = "dpi_cliente") // Nombre exacto en MySQL
+    @NotBlank(message = "El DPI no puede estar vacío")
+    @Size(min = 13, max = 13, message = "El DPI debe tener exactamente 13 dígitos")
+    @Pattern(regexp = "\\d{13}", message = "El DPI solo debe contener números")
+    @Column(name = "dpi_cliente")
     private String dpiCliente;
 
-    @Column(name = "nombre_cliente") // Nombre exacto en MySQL
+    @NotBlank(message = "El nombre del cliente es obligatorio")
+    @Size(min = 2, max = 100, message = "El nombre debe tener entre 2 y 100 caracteres")
+    @Column(name = "nombre_cliente")
     private String nombreCliente;
 
-    @Column(name = "apellido_cliente") // Nombre exacto en MySQL
+    @NotBlank(message = "El apellido del cliente es obligatorio")
+    @Size(min = 2, max = 100, message = "El apellido debe tener entre 2 y 100 caracteres")
+    @Column(name = "apellido_cliente")
     private String apellidoCliente;
 
+    @Size(max = 200, message = "La dirección no puede exceder 200 caracteres")
     @Column(name = "direccion")
     private String direccion;
 
@@ -27,7 +33,8 @@ public class Cliente {
 
     public Cliente() {}
 
-    public Cliente(String dpiCliente, String nombreCliente, String apellidoCliente, String direccion, int estado) {
+    public Cliente(String dpiCliente, String nombreCliente, String apellidoCliente,
+                   String direccion, int estado) {
         this.dpiCliente = dpiCliente;
         this.nombreCliente = nombreCliente;
         this.apellidoCliente = apellidoCliente;
@@ -35,7 +42,6 @@ public class Cliente {
         this.estado = estado;
     }
 
-    // GETTERS Y SETTERS (Corregidos a minúscula inicial)
     public String getDpiCliente() { return dpiCliente; }
     public void setDpiCliente(String dpiCliente) { this.dpiCliente = dpiCliente; }
 

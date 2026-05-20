@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar navbar-dark sticky-top shadow">
+    <div class="container">
+        <a class="navbar-brand">🏫 KINAL APP 2026</a>
+        <div class="d-flex align-items-center gap-3">
+            <span class="text-white">Hola, <strong id="nav-username"></strong></span>
+            <span id="nav-badge" class="badge fs-6"></span>
+            <button class="btn btn-outline-light btn-sm" onclick="cerrarSesion()">Cerrar Sesión</button>
+        </div>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <h2 class="mb-2 fw-bold">Panel de Control</h2>
+    <p class="text-muted mb-5">Selecciona una sección para empezar a trabajar</p>
+
+    <div class="row g-4">
+
+        <!-- PRODUCTOS -->
+        <div class="col-md-6 col-lg-3">
+            <div class="section-card card" onclick="window.location.href='productos.html'">
+                <div class="card-body">
+                    <div class="icon-big">📦</div>
+                    <h5 class="fw-bold">Productos</h5>
+                    <p class="text-muted mb-0" style="font-size:0.9rem">Inventario y precios</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- CLIENTES -->
+        <div class="col-md-6 col-lg-3">
+            <div class="section-card card" onclick="window.location.href='clientes.html'">
+                <div class="card-body">
+                    <div class="icon-big">👥</div>
+                    <h5 class="fw-bold">Clientes</h5>
+                    <p class="text-muted mb-0" style="font-size:0.9rem">Registro y gestión</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VENTAS -->
+        <div class="col-md-6 col-lg-3">
+            <div class="section-card card" onclick="window.location.href='ventas.html'">
+                <div class="card-body">
+                    <div class="icon-big">🧾</div>
+                    <h5 class="fw-bold">Ventas</h5>
+                    <p class="text-muted mb-0" style="font-size:0.9rem">Registro de ventas</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- USUARIOS — visible para todos pero solo ADMIN puede editar -->
+        <div class="col-md-6 col-lg-3">
+            <div class="section-card card" onclick="window.location.href='usuarios.html'">
+                <div class="card-body">
+                    <div class="icon-big">🔐</div>
+                    <h5 class="fw-bold">Usuarios</h5>
+                    <p class="text-muted mb-0" style="font-size:0.9rem">Cuentas del sistema</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- DETALLE VENTAS -->
+        <div class="col-md-6 col-lg-3">
+            <div class="section-card card" onclick="window.location.href='detalles.html'">
+                <div class="card-body">
+                    <div class="icon-big">📋</div>
+                    <h5 class="fw-bold">Detalle Ventas</h5>
+                    <p class="text-muted mb-0" style="font-size:0.9rem">Auditoría de ventas</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Info de permisos según rol -->
+    <div class="mt-5 p-4 bg-white rounded shadow-sm">
+        <h6 class="fw-bold mb-3">📌 Tus permisos en el sistema</h6>
+        <div id="info-permisos"></div>
+    </div>
+</div>
+
+<script>
+    // Cargar info del usuario logueado
+    fetch('/api/auth/me', { credentials: 'include' })
+        .then(r => {
+            if (!r.ok) { window.location.href = '/login.html'; return; }
+            return r.json();
+        })
+        .then(data => {
+            if (!data) return;
+            document.getElementById('nav-username').textContent = data.username;
+            const badge = document.getElementById('nav-badge');
+            const info = document.getElementById('info-permisos');
+
+            if (data.rol === 'ADMIN') {
+                badge.textContent = 'ADMIN';
+                badge.className = 'badge fs-6 badge-admin';
+                info.innerHTML = `
+                    <div class="alert alert-success mb-0">
+                        ✅ Eres <strong>Administrador</strong> — tienes acceso completo:
+                        ver, agregar, editar y eliminar en todos los módulos.
+                    </div>`;
+            } else {
+                badge.textContent = 'USUARIO';
+                badge.className = 'badge fs-6 badge-user';
+                info.innerHTML = `
+                    <div class="alert alert-info mb-0">
+                        👤 Eres <strong>Usuario</strong> — puedes ver, buscar y agregar registros.
+                        Las acciones de editar y eliminar son solo para administradores.
+                    </div>`;
+            }
+        })
+        .catch(() => window.location.href = '/login.html');
+
+    function cerrarSesion() {
+        fetch('/api/auth/logout', { method: 'POST', credentials: 'include' })
+            .then(() => window.location.href = '/login.html?logout=true')
+            .catch(() => window.location.href = '/login.html');
+    }
+</script>
+</body>
+</html>

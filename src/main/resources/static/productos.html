@@ -5,44 +5,231 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KinalApp - Productos</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-light">
+<body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow">
+<nav class="navbar navbar-dark sticky-top shadow">
     <div class="container">
-        <a class="navbar-brand fw-bold" href="index.html">KINAL APP 2026</a>
-        <div class="navbar-nav">
-            <a class="nav-link" href="index.html">Ventas</a>
-            <a class="nav-link" href="clientes.html">Clientes</a>
-            <a class="nav-link active" href="productos.html">Productos</a>
-        </div>
+        <a class="navbar-brand">📦 Productos</a>
+        <div id="nav-info"></div>
     </div>
 </nav>
 
-<div class="container mt-5">
-    <div class="card shadow border-0">
-        <div class="card-body">
-            <h2 class="card-title text-center mb-4">Inventario de Productos</h2>
+<div class="container py-4">
 
-            <div class="table-responsive">
-                <table class="table table-hover align-middle">
-                    <thead class="table-dark">
-                    <tr>
-                        <th>ID Producto</th>
-                        <th>Nombre</th>
-                        <th>Stock</th>
-                        <th>Precio Unitario</th>
-                        <th class="text-center">Acciones</th>
-                    </tr>
-                    </thead>
-                    <tbody id="cuerpo-tabla-productos">
-                    </tbody>
-                </table>
+    <div id="alerta" class="alert d-none mb-3"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Inventario de Productos</h4>
+        <button class="btn btn-success solo-admin" onclick="abrirModalNuevo()">+ Nuevo Producto</button>
+    </div>
+
+    <!-- Búsqueda rápida -->
+    <div class="mb-3">
+        <input type="text" id="busqueda" class="form-control" placeholder="🔍 Buscar por descripción..."
+               oninput="filtrar()">
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover m-0 table-header-kinal">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Descripción</th>
+                    <th>Stock</th>
+                    <th>Precio Unit.</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal crear/editar -->
+<div class="modal fade" id="modalProducto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--kinal-azul);color:white">
+                <h5 class="modal-title" id="modal-titulo">Nuevo Producto</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="prod-id">
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Descripción <span class="text-danger">*</span></label>
+                    <input type="text" id="prod-desc" class="form-control" placeholder="Nombre del producto">
+                    <div class="invalid-feedback" id="err-desc"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Precio Unitario (Q) <span class="text-danger">*</span></label>
+                    <input type="number" id="prod-precio" class="form-control" min="0.01" step="0.01" placeholder="0.00">
+                    <div class="invalid-feedback" id="err-precio"></div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Stock <span class="text-danger">*</span></label>
+                    <input type="number" id="prod-stock" class="form-control" min="0" placeholder="0">
+                    <div class="invalid-feedback" id="err-stock"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" onclick="guardar()">Guardar</button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="js/productos.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    let todosLosProductos = [];
+    let rolActual = 'USER';
+    const modal = new bootstrap.Modal(document.getElementById('modalProducto'));
+
+    // Cargar sesión y luego productos
+    verificarSesion().then(u => {
+        if (!u) return;
+        pintarNavbar(u);
+        rolActual = u.rol;
+        aplicarPermisos(u.rol);
+        cargarProductos();
+    });
+
+    function cargarProductos() {
+        fetch('/productos', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => { todosLosProductos = data; renderTabla(data); })
+            .catch(() => mostrarAlerta('Error cargando productos', 'danger'));
+    }
+
+    function renderTabla(lista) {
+        const tbody = document.getElementById('tbody');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-4">No hay productos registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(p => `
+            <tr>
+                <td>${p.codigoProducto}</td>
+                <td>${p.descripcion}</td>
+                <td><span class="badge bg-secondary">${p.stock}</span></td>
+                <td>Q ${parseFloat(p.precioUnitario).toFixed(2)}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary solo-admin" onclick="abrirModalEditar(${p.codigoProducto})">✏️ Editar</button>
+                    <button class="btn btn-sm btn-danger solo-admin" onclick="eliminar(${p.codigoProducto})">🗑️ Eliminar</button>
+                </td>
+            </tr>
+        `).join('');
+        // Aplicar permisos a los botones recién renderizados
+        aplicarPermisos(rolActual);
+    }
+
+    function filtrar() {
+        const q = document.getElementById('busqueda').value.toLowerCase();
+        renderTabla(todosLosProductos.filter(p =>
+            p.descripcion.toLowerCase().includes(q)
+        ));
+    }
+
+    function abrirModalNuevo() {
+        document.getElementById('modal-titulo').textContent = 'Nuevo Producto';
+        document.getElementById('prod-id').value = '';
+        document.getElementById('prod-desc').value = '';
+        document.getElementById('prod-precio').value = '';
+        document.getElementById('prod-stock').value = '';
+        limpiarErroresModal();
+        modal.show();
+    }
+
+    function abrirModalEditar(id) {
+        const p = todosLosProductos.find(x => x.codigoProducto === id);
+        if (!p) return;
+        document.getElementById('modal-titulo').textContent = 'Editar Producto';
+        document.getElementById('prod-id').value = p.codigoProducto;
+        document.getElementById('prod-desc').value = p.descripcion;
+        document.getElementById('prod-precio').value = p.precioUnitario;
+        document.getElementById('prod-stock').value = p.stock;
+        limpiarErroresModal();
+        modal.show();
+    }
+
+    function limpiarErroresModal() {
+        ['desc','precio','stock'].forEach(f => {
+            document.getElementById('prod-'+f).classList.remove('is-invalid');
+            document.getElementById('err-'+f).textContent = '';
+        });
+    }
+
+    function validarModal() {
+        limpiarErroresModal();
+        let ok = true;
+        const desc = document.getElementById('prod-desc').value.trim();
+        const precio = document.getElementById('prod-precio').value;
+        const stock = document.getElementById('prod-stock').value;
+
+        if (!desc) { marcarErrorModal('desc', 'La descripción es obligatoria'); ok = false; }
+        if (!precio || parseFloat(precio) <= 0) { marcarErrorModal('precio', 'El precio debe ser mayor a 0'); ok = false; }
+        if (stock === '' || parseInt(stock) < 0) { marcarErrorModal('stock', 'El stock no puede ser negativo'); ok = false; }
+        return ok;
+    }
+
+    function marcarErrorModal(campo, msg) {
+        document.getElementById('prod-'+campo).classList.add('is-invalid');
+        document.getElementById('err-'+campo).textContent = msg;
+    }
+
+    function guardar() {
+        if (!validarModal()) return;
+        const id = document.getElementById('prod-id').value;
+        const body = {
+            descripcion: document.getElementById('prod-desc').value.trim(),
+            precioUnitario: parseFloat(document.getElementById('prod-precio').value),
+            stock: parseInt(document.getElementById('prod-stock').value)
+        };
+        const url = id ? `/productos/${id}` : '/productos';
+        const method = id ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (r.ok) {
+                modal.hide();
+                mostrarAlerta(id ? 'Producto actualizado' : 'Producto creado', 'success');
+                cargarProductos();
+            } else {
+                mostrarAlerta(data.error || 'Error al guardar', 'danger');
+            }
+        })
+        .catch(() => mostrarAlerta('Error de conexión', 'danger'));
+    }
+
+    function eliminar(id) {
+        if (!confirm('¿Estás seguro de eliminar este producto?')) return;
+        fetch(`/productos/${id}`, { method: 'DELETE', credentials: 'include' })
+            .then(r => {
+                if (r.ok) { mostrarAlerta('Producto eliminado', 'success'); cargarProductos(); }
+                else mostrarAlerta('Error al eliminar', 'danger');
+            });
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+        setTimeout(() => a.classList.add('d-none'), 4000);
+    }
+</script>
 </body>
 </html>

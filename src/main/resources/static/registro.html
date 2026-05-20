@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Registro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .auth-card { margin: 50px auto; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .auth-header { background: #002d72; color: white; padding: 20px; border-radius: 15px 15px 0 0; text-align: center; }
+        .btn-kinal { background: #002d72; color: white; width: 100%; }
+        .btn-kinal:hover { background: #001f52; color: white; }
+    </style>
+</head>
+<body class="bg-light">
+
+<div class="container">
+    <div class="auth-card card" style="max-width:480px">
+        <div class="auth-header">
+            <h3>KINAL APP</h3>
+            <p>Crear nueva cuenta</p>
+        </div>
+        <div class="card-body p-4">
+            <div id="alerta" class="alert d-none mb-3"></div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Nombre de usuario <span class="text-danger">*</span></label>
+                <input type="text" id="username" class="form-control" placeholder="Mínimo 3 caracteres">
+                <div class="invalid-feedback" id="err-username"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Correo electrónico <span class="text-danger">*</span></label>
+                <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
+                <div class="invalid-feedback" id="err-email"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="password" class="form-control" placeholder="Mínimo 6 caracteres">
+                <div class="invalid-feedback" id="err-password"></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Confirmar contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="confirmar" class="form-control" placeholder="Repite tu contraseña">
+                <div class="invalid-feedback" id="err-confirmar"></div>
+            </div>
+
+            <button class="btn btn-kinal" onclick="registrar()">Crear Cuenta</button>
+
+            <hr>
+            <p class="text-center mb-0 text-muted">
+                ¿Ya tienes cuenta? <a href="login.html" class="text-decoration-none fw-semibold">Inicia sesión</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function limpiarErrores() {
+        ['username', 'email', 'password', 'confirmar'].forEach(id => {
+            const el = document.getElementById(id);
+            el.classList.remove('is-invalid');
+            document.getElementById('err-' + id).textContent = '';
+        });
+    }
+
+    function marcarError(campo, msg) {
+        document.getElementById(campo).classList.add('is-invalid');
+        document.getElementById('err-' + campo).textContent = msg;
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+        a.classList.remove('d-none');
+    }
+
+    function validar() {
+        limpiarErrores();
+        let esValido = true;
+        const u = document.getElementById('username').value.trim();
+        const e = document.getElementById('email').value.trim();
+        const p = document.getElementById('password').value;
+        const c = document.getElementById('confirmar').value;
+
+        if (u.length < 3) { marcarError('username', 'Mínimo 3 caracteres'); esValido = false; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) { marcarError('email', 'Correo inválido'); esValido = false; }
+        if (p.length < 6) { marcarError('password', 'Mínimo 6 caracteres'); esValido = false; }
+        if (p !== c) { marcarError('confirmar', 'Las contraseñas no coinciden'); esValido = false; }
+
+        return esValido;
+    }
+
+    async function registrar() {
+        if (!validar()) return;
+
+        const datos = {
+            username: document.getElementById('username').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value
+        };
+
+        try {
+            const respuesta = await fetch('http://localhost:8999/usuarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(datos)
+            });
+
+            if (respuesta.ok) {
+                mostrarAlerta('Cuenta creada correctamente. Redirigiendo...', 'success');
+                setTimeout(() => window.location.href = '/login.html', 2000);
+            } else {
+                mostrarAlerta('Error en el registro. Verifique sus datos.', 'danger');
+            }
+        } catch (error) {
+            mostrarAlerta('Error de conexión con el servidor.', 'danger');
+        }
+    }
+</script>
+</body>
+</html>
