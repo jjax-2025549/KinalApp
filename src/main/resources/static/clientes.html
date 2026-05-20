@@ -1,16 +1,235 @@
-<h2 class="text-center mb-4">Mantenimiento de Clientes</h2>
-<div class="table-responsive">
-    <table class="table table-hover">
-        <thead class="table-dark">
-        <tr>
-            <th>DPI</th>
-            <th>Nombre</th>
-            <th>Apellido</th>
-            <th>Dirección</th>
-            <th class="text-center">Acciones</th>
-        </tr>
-        </thead>
-        <tbody id="cuerpo-tabla-clientes"></tbody>
-    </table>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Clientes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar navbar-dark sticky-top shadow">
+    <div class="container">
+        <a class="navbar-brand">👥 Clientes</a>
+        <div id="nav-info"></div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div id="alerta" class="alert d-none mb-3"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Gestión de Clientes</h4>
+        <button class="btn btn-success" onclick="abrirModalNuevo()">+ Nuevo Cliente</button>
+    </div>
+
+    <div class="mb-3">
+        <input type="text" id="busqueda" class="form-control" placeholder="🔍 Buscar por nombre, apellido o DPI..."
+               oninput="filtrar()">
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover m-0 table-header-kinal">
+                <thead>
+                <tr><th>DPI</th><th>Nombre</th><th>Apellido</th><th>Dirección</th><th>Estado</th><th class="text-center">Acciones</th></tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
 </div>
-<script src="js/clientes.js"></script>
+
+<!-- Modal -->
+<div class="modal fade" id="modalCliente" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--kinal-azul);color:white">
+                <h5 class="modal-title" id="modal-titulo">Nuevo Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">DPI (13 dígitos) <span class="text-danger">*</span></label>
+                    <input type="text" id="cli-dpi" class="form-control" maxlength="13" placeholder="1234567890123">
+                    <div class="invalid-feedback" id="err-dpi"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                    <input type="text" id="cli-nombre" class="form-control">
+                    <div class="invalid-feedback" id="err-nombre"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Apellido <span class="text-danger">*</span></label>
+                    <input type="text" id="cli-apellido" class="form-control">
+                    <div class="invalid-feedback" id="err-apellido"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Dirección</label>
+                    <input type="text" id="cli-direccion" class="form-control">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" onclick="guardar()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    let todosLosClientes = [];
+    let rolActual = 'USER';
+    let editandoDpi = null;
+    const modal = new bootstrap.Modal(document.getElementById('modalCliente'));
+
+    verificarSesion().then(u => {
+        if (!u) return;
+        pintarNavbar(u);
+        rolActual = u.rol;
+        aplicarPermisos(u.rol);
+        cargarClientes();
+    });
+
+    function cargarClientes() {
+        fetch('/clientes', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => { todosLosClientes = data; renderTabla(data); })
+            .catch(() => mostrarAlerta('Error cargando clientes', 'danger'));
+    }
+
+    function renderTabla(lista) {
+        const tbody = document.getElementById('tbody');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay clientes registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(c => `
+            <tr>
+                <td><code>${c.dpiCliente}</code></td>
+                <td>${c.nombreCliente}</td>
+                <td>${c.apellidoCliente}</td>
+                <td>${c.direccion || '—'}</td>
+                <td><span class="badge ${c.estado===1?'bg-success':'bg-secondary'}">${c.estado===1?'Activo':'Inactivo'}</span></td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-primary solo-admin" onclick="abrirModalEditar('${c.dpiCliente}')">✏️</button>
+                    <button class="btn btn-sm btn-danger solo-admin" onclick="eliminar('${c.dpiCliente}')">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+        aplicarPermisos(rolActual);
+    }
+
+    function filtrar() {
+        const q = document.getElementById('busqueda').value.toLowerCase();
+        renderTabla(todosLosClientes.filter(c =>
+            c.nombreCliente.toLowerCase().includes(q) ||
+            c.apellidoCliente.toLowerCase().includes(q) ||
+            c.dpiCliente.includes(q)
+        ));
+    }
+
+    function abrirModalNuevo() {
+        editandoDpi = null;
+        document.getElementById('modal-titulo').textContent = 'Nuevo Cliente';
+        document.getElementById('cli-dpi').disabled = false;
+        ['dpi','nombre','apellido','direccion'].forEach(f => {
+            document.getElementById('cli-'+f).value = '';
+            if (document.getElementById('err-'+f))
+                document.getElementById('err-'+f).textContent = '';
+            document.getElementById('cli-'+f).classList.remove('is-invalid');
+        });
+        modal.show();
+    }
+
+    function abrirModalEditar(dpi) {
+        const c = todosLosClientes.find(x => x.dpiCliente === dpi);
+        if (!c) return;
+        editandoDpi = dpi;
+        document.getElementById('modal-titulo').textContent = 'Editar Cliente';
+        document.getElementById('cli-dpi').value = c.dpiCliente;
+        document.getElementById('cli-dpi').disabled = true; // DPI no se puede cambiar
+        document.getElementById('cli-nombre').value = c.nombreCliente;
+        document.getElementById('cli-apellido').value = c.apellidoCliente;
+        document.getElementById('cli-direccion').value = c.direccion || '';
+        modal.show();
+    }
+
+    function validar() {
+        let ok = true;
+        const dpi = document.getElementById('cli-dpi').value.trim();
+        const nombre = document.getElementById('cli-nombre').value.trim();
+        const apellido = document.getElementById('cli-apellido').value.trim();
+
+        ['dpi','nombre','apellido'].forEach(f => {
+            document.getElementById('cli-'+f).classList.remove('is-invalid');
+            document.getElementById('err-'+f).textContent = '';
+        });
+
+        if (!editandoDpi) {
+            if (!dpi || !/^\d{13}$/.test(dpi)) {
+                marcarError('dpi', 'El DPI debe tener exactamente 13 dígitos numéricos'); ok = false;
+            }
+        }
+        if (!nombre) { marcarError('nombre', 'El nombre es obligatorio'); ok = false; }
+        if (!apellido) { marcarError('apellido', 'El apellido es obligatorio'); ok = false; }
+        return ok;
+    }
+
+    function marcarError(campo, msg) {
+        document.getElementById('cli-'+campo).classList.add('is-invalid');
+        document.getElementById('err-'+campo).textContent = msg;
+    }
+
+    function guardar() {
+        if (!validar()) return;
+        const body = {
+            dpiCliente: document.getElementById('cli-dpi').value.trim(),
+            nombreCliente: document.getElementById('cli-nombre').value.trim(),
+            apellidoCliente: document.getElementById('cli-apellido').value.trim(),
+            direccion: document.getElementById('cli-direccion').value.trim(),
+            estado: 1
+        };
+        const url = editandoDpi ? `/clientes/${editandoDpi}` : '/clientes';
+        const method = editandoDpi ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (r.ok) {
+                modal.hide();
+                mostrarAlerta(editandoDpi ? 'Cliente actualizado' : 'Cliente registrado', 'success');
+                cargarClientes();
+            } else {
+                mostrarAlerta(data.error || 'Error al guardar', 'danger');
+            }
+        })
+        .catch(() => mostrarAlerta('Error de conexión', 'danger'));
+    }
+
+    function eliminar(dpi) {
+        if (!confirm('¿Eliminar este cliente?')) return;
+        fetch(`/clientes/${dpi}`, { method: 'DELETE', credentials: 'include' })
+            .then(r => {
+                if (r.ok) { mostrarAlerta('Cliente eliminado', 'success'); cargarClientes(); }
+                else mostrarAlerta('Error al eliminar', 'danger');
+            });
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+        setTimeout(() => a.classList.add('d-none'), 4000);
+    }
+</script>
+</body>
+</html>

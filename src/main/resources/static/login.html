@@ -17,24 +17,23 @@
         </div>
         <div class="card-body p-4">
 
-            <!-- Mensajes de error/éxito -->
             <div id="alerta" class="alert d-none mb-3"></div>
 
             <h5 class="mb-4 text-center text-secondary">Iniciar Sesión</h5>
 
             <div class="mb-3">
                 <label class="form-label fw-semibold">Usuario</label>
-                <input type="text" id="username" class="form-control" placeholder="Tu nombre de usuario">
+                <input type="text" id="username" name="username" class="form-control" placeholder="Tu nombre de usuario">
                 <div class="invalid-feedback d-none" id="err-username">El usuario es obligatorio</div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label fw-semibold">Contraseña</label>
-                <input type="password" id="password" class="form-control" placeholder="Tu contraseña">
+                <input type="password" id="password" name="password" class="form-control" placeholder="Tu contraseña">
                 <div class="invalid-feedback d-none" id="err-password">La contraseña es obligatoria</div>
             </div>
 
-            <button class="btn btn-kinal mt-2" onclick="iniciarSesion()">
+            <button class="btn btn-kinal mt-2 w-100" onclick="iniciarSesion()">
                 Iniciar Sesión
             </button>
 
@@ -48,12 +47,6 @@
 </div>
 
 <script>
-    // Si ya hay sesión, ir al dashboard directamente
-    fetch('/api/auth/me', { credentials: 'include' })
-        .then(r => { if (r.ok) window.location.href = '/dashboard.html'; })
-        .catch(() => {});
-
-    // Revisar si venimos de un error o logout
     const params = new URLSearchParams(window.location.search);
     if (params.get('error')) mostrarAlerta('Usuario o contraseña incorrectos', 'danger');
     if (params.get('logout')) mostrarAlerta('Sesión cerrada correctamente', 'success');
@@ -61,6 +54,7 @@
     function mostrarAlerta(msg, tipo) {
         const a = document.getElementById('alerta');
         a.className = `alert alert-${tipo}`;
+        a.classList.remove('d-none');
         a.textContent = msg;
     }
 
@@ -71,7 +65,6 @@
         const eu = document.getElementById('err-username');
         const ep = document.getElementById('err-password');
 
-        // Limpiar errores
         u.classList.remove('is-invalid'); eu.classList.add('d-none');
         p.classList.remove('is-invalid'); ep.classList.add('d-none');
 
@@ -87,20 +80,22 @@
     function iniciarSesion() {
         if (!validar()) return;
 
-        // Spring Security espera form-urlencoded en /api/auth/login
-        const body = new URLSearchParams();
-        body.append('username', document.getElementById('username').value.trim());
-        body.append('password', document.getElementById('password').value);
+        // Construimos los parámetros URL-encoded exactos que Spring Security exige
+        const data = new URLSearchParams();
+        data.append('username', document.getElementById('username').value.trim());
+        data.append('password', document.getElementById('password').value);
 
         fetch('/api/auth/login', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: body,
-            credentials: 'include',
-            redirect: 'follow'
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: data.toString(), // Enviamos el string codificado puro
+            credentials: 'include'
         })
-        .then(r => {
-            if (r.ok || r.url.includes('dashboard')) {
+        .then(response => {
+            // Si el backend (SecurityConfig) responde con el JSON de éxito (200 OK)
+            if (response.ok) {
                 window.location.href = '/dashboard.html';
             } else {
                 mostrarAlerta('Usuario o contraseña incorrectos', 'danger');
@@ -109,7 +104,6 @@
         .catch(() => mostrarAlerta('Error de conexión con el servidor', 'danger'));
     }
 
-    // Permitir Enter para hacer login
     document.addEventListener('keydown', e => {
         if (e.key === 'Enter') iniciarSesion();
     });
