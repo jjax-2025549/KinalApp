@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Detalle Ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<nav class="navbar navbar-dark sticky-top shadow">
+    <div class="container">
+        <a class="navbar-brand">📋 Detalle de Ventas</a>
+        <div id="nav-info"></div>
+    </div>
+</nav>
+<div class="container py-4">
+    <div id="alerta" class="alert d-none mb-3"></div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Auditoría de Ventas</h4>
+        <button class="btn btn-success" onclick="abrirModal()">+ Agregar Detalle</button>
+    </div>
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover m-0 table-header-kinal">
+                <thead>
+                    <tr><th>ID Detalle</th><th>ID Venta</th><th>Producto</th><th>Cantidad</th><th>Precio Unit.</th><th class="text-center">Acciones</th></tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--kinal-azul);color:white">
+                <h5 class="modal-title">Nuevo Detalle de Venta</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Venta ID <span class="text-danger">*</span></label>
+                    <select id="det-venta" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Producto <span class="text-danger">*</span></label>
+                    <select id="det-producto" class="form-select"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Cantidad <span class="text-danger">*</span></label>
+                    <input type="number" id="det-cantidad" class="form-control" min="1">
+                    <div class="invalid-feedback" id="err-cantidad"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Precio Unitario (Q) <span class="text-danger">*</span></label>
+                    <input type="number" id="det-precio" class="form-control" min="0.01" step="0.01">
+                    <div class="invalid-feedback" id="err-precio"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" onclick="guardar()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    let rolActual = 'USER';
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalle'));
+
+    verificarSesion().then(u => {
+        if (!u) return;
+        pintarNavbar(u);
+        rolActual = u.rol;
+        aplicarPermisos(u.rol);
+        cargarDetalles();
+        cargarVentas();
+        cargarProductos();
+    });
+
+    function cargarDetalles() {
+        fetch('/detalle-ventas', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => renderTabla(data))
+            .catch(() => mostrarAlerta('Error cargando detalles', 'danger'));
+    }
+
+    function cargarVentas() {
+        fetch('/ventas', { credentials: 'include' })
+            .then(r => r.json())
+            .then(ventas => {
+                const sel = document.getElementById('det-venta');
+                sel.innerHTML = '<option value="">-- Selecciona venta --</option>';
+                ventas.forEach(v => {
+                    const opt = document.createElement('option');
+                    opt.value = v.codigoVenta;
+                    opt.textContent = `Venta #${v.codigoVenta} — ${v.fechaVenta}`;
+                    sel.appendChild(opt);
+                });
+            });
+    }
+
+    function cargarProductos() {
+        fetch('/productos', { credentials: 'include' })
+            .then(r => r.json())
+            .then(productos => {
+                const sel = document.getElementById('det-producto');
+                sel.innerHTML = '<option value="">-- Selecciona producto --</option>';
+                productos.forEach(p => {
+                    const opt = document.createElement('option');
+                    opt.value = p.codigoProducto;
+                    opt.textContent = `${p.descripcion} (Q${p.precioUnitario})`;
+                    opt.dataset.precio = p.precioUnitario;
+                    sel.appendChild(opt);
+                });
+                // Auto llenar precio al seleccionar producto
+                sel.addEventListener('change', () => {
+                    const opt = sel.options[sel.selectedIndex];
+                    if (opt.dataset.precio)
+                        document.getElementById('det-precio').value = opt.dataset.precio;
+                });
+            });
+    }
+
+    function renderTabla(lista) {
+        const tbody = document.getElementById('tbody');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay detalles registrados</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(d => `
+            <tr>
+                <td>${d.codigoDetalleVenta}</td>
+                <td>${d.venta ? '#' + d.venta.codigoVenta : '—'}</td>
+                <td>${d.producto ? d.producto.descripcion : '—'}</td>
+                <td>${d.cantidad}</td>
+                <td>Q ${parseFloat(d.precioUnitario).toFixed(2)}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-danger solo-admin" onclick="eliminar(${d.codigoDetalleVenta})">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+        aplicarPermisos(rolActual);
+    }
+
+    function abrirModal() {
+        document.getElementById('det-cantidad').value = '';
+        document.getElementById('det-precio').value = '';
+        modal.show();
+    }
+
+    function guardar() {
+        const ventaId = document.getElementById('det-venta').value;
+        const prodId = document.getElementById('det-producto').value;
+        const cantidad = document.getElementById('det-cantidad').value;
+        const precio = document.getElementById('det-precio').value;
+
+        if (!ventaId || !prodId || !cantidad || !precio) {
+            mostrarAlerta('Todos los campos son obligatorios', 'warning');
+            return;
+        }
+
+        const body = {
+            cantidad: parseInt(cantidad),
+            precioUnitario: parseFloat(precio),
+            venta: { codigoVenta: parseInt(ventaId) },
+            producto: { codigoProducto: parseInt(prodId) }
+        };
+
+        fetch('/detalle-ventas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        })
+        .then(r => {
+            if (r.ok) {
+                modal.hide();
+                mostrarAlerta('Detalle agregado', 'success');
+                cargarDetalles();
+            } else mostrarAlerta('Error al guardar', 'danger');
+        });
+    }
+
+    function eliminar(id) {
+        if (!confirm('¿Eliminar este detalle?')) return;
+        fetch(`/detalle-ventas/${id}`, { method: 'DELETE', credentials: 'include' })
+            .then(r => {
+                if (r.ok) { mostrarAlerta('Detalle eliminado', 'success'); cargarDetalles(); }
+            });
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+        setTimeout(() => a.classList.add('d-none'), 4000);
+    }
+</script>
+</body>
+</html>

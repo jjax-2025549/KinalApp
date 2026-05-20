@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Usuarios</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<nav class="navbar navbar-dark sticky-top shadow">
+    <div class="container">
+        <a class="navbar-brand">🔐 Usuarios</a>
+        <div id="nav-info"></div>
+    </div>
+</nav>
+
+<div class="container py-4">
+    <div id="alerta" class="alert d-none mb-3"></div>
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Gestión de Usuarios</h4>
+        <!-- Solo el ADMIN puede crear usuarios desde aquí -->
+        <button class="btn btn-warning solo-admin" onclick="abrirModalNuevo()">+ Nuevo Usuario</button>
+    </div>
+
+    <!-- Aviso para USER -->
+    <div id="aviso-user" class="alert alert-info d-none mb-3">
+        👤 Solo puedes ver los usuarios. Para editar o eliminar necesitas permisos de administrador.
+    </div>
+
+    <div class="mb-3">
+        <input type="text" id="busqueda" class="form-control" placeholder="🔍 Buscar por username o email..." oninput="filtrar()">
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover m-0 table-header-kinal">
+                <thead>
+                    <tr><th>ID</th><th>Username</th><th>Email</th><th>Rol</th><th>Estado</th><th class="text-center solo-admin">Acciones</th></tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--kinal-azul);color:white">
+                <h5 class="modal-title" id="modal-titulo">Nuevo Usuario</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="usr-id">
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                    <input type="text" id="usr-username" class="form-control">
+                    <div class="invalid-feedback" id="err-username"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                    <input type="email" id="usr-email" class="form-control">
+                    <div class="invalid-feedback" id="err-email"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Contraseña <span class="text-danger" id="pass-req">*</span></label>
+                    <input type="password" id="usr-password" class="form-control">
+                    <small class="text-muted" id="pass-hint"></small>
+                    <div class="invalid-feedback" id="err-password"></div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Rol <span class="text-danger">*</span></label>
+                    <select id="usr-rol" class="form-select">
+                        <option value="USER">USER — Usuario estándar</option>
+                        <option value="ADMIN">ADMIN — Administrador</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-warning" onclick="guardar()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/auth.js"></script>
+<script>
+    let todosLosUsuarios = [];
+    let rolActual = 'USER';
+    let editandoId = null;
+    const modal = new bootstrap.Modal(document.getElementById('modalUsuario'));
+
+    verificarSesion().then(u => {
+        if (!u) return;
+        pintarNavbar(u);
+        rolActual = u.rol;
+        aplicarPermisos(u.rol);
+        if (u.rol !== 'ADMIN') {
+            document.getElementById('aviso-user').classList.remove('d-none');
+        }
+        cargarUsuarios();
+    });
+
+    function cargarUsuarios() {
+        fetch('/usuarios', { credentials: 'include' })
+            .then(r => r.json())
+            .then(data => { todosLosUsuarios = data; renderTabla(data); })
+            .catch(() => mostrarAlerta('Error cargando usuarios', 'danger'));
+    }
+
+    function renderTabla(lista) {
+        const tbody = document.getElementById('tbody');
+        if (!lista.length) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No hay usuarios</td></tr>';
+            return;
+        }
+        tbody.innerHTML = lista.map(u => `
+            <tr>
+                <td>${u.codigoUsuario}</td>
+                <td><strong>${u.username}</strong></td>
+                <td>${u.email}</td>
+                <td><span class="badge ${u.rol==='ADMIN'?'badge-admin':'badge-user'}">${u.rol}</span></td>
+                <td><span class="badge ${u.estado===1?'bg-success':'bg-secondary'}">${u.estado===1?'Activo':'Inactivo'}</span></td>
+                <td class="text-center solo-admin">
+                    <button class="btn btn-sm btn-primary" onclick="abrirModalEditar(${u.codigoUsuario})">✏️</button>
+                    <button class="btn btn-sm btn-danger" onclick="eliminar(${u.codigoUsuario})">🗑️</button>
+                </td>
+            </tr>
+        `).join('');
+        aplicarPermisos(rolActual);
+    }
+
+    function filtrar() {
+        const q = document.getElementById('busqueda').value.toLowerCase();
+        renderTabla(todosLosUsuarios.filter(u =>
+            u.username.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+        ));
+    }
+
+    function abrirModalNuevo() {
+        editandoId = null;
+        document.getElementById('modal-titulo').textContent = 'Nuevo Usuario';
+        document.getElementById('pass-req').style.display = 'inline';
+        document.getElementById('pass-hint').textContent = '';
+        ['username','email','password'].forEach(f => {
+            document.getElementById('usr-'+f).value = '';
+            document.getElementById('err-'+f).textContent = '';
+            document.getElementById('usr-'+f).classList.remove('is-invalid');
+        });
+        document.getElementById('usr-rol').value = 'USER';
+        modal.show();
+    }
+
+    function abrirModalEditar(id) {
+        const u = todosLosUsuarios.find(x => x.codigoUsuario === id);
+        if (!u) return;
+        editandoId = id;
+        document.getElementById('modal-titulo').textContent = 'Editar Usuario';
+        document.getElementById('usr-username').value = u.username;
+        document.getElementById('usr-email').value = u.email;
+        document.getElementById('usr-password').value = '';
+        document.getElementById('usr-rol').value = u.rol;
+        document.getElementById('pass-req').style.display = 'none';
+        document.getElementById('pass-hint').textContent = 'Deja vacío para no cambiar la contraseña';
+        modal.show();
+    }
+
+    function guardar() {
+        const id = editandoId;
+        const username = document.getElementById('usr-username').value.trim();
+        const email = document.getElementById('usr-email').value.trim();
+        const password = document.getElementById('usr-password').value;
+        const rol = document.getElementById('usr-rol').value;
+        let ok = true;
+
+        ['username','email','password'].forEach(f => {
+            document.getElementById('usr-'+f).classList.remove('is-invalid');
+            document.getElementById('err-'+f).textContent = '';
+        });
+
+        if (!username) { marcarError('username', 'El username es obligatorio'); ok = false; }
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            marcarError('email', 'Email inválido'); ok = false;
+        }
+        if (!id && !password) { marcarError('password', 'La contraseña es obligatoria para usuarios nuevos'); ok = false; }
+        if (!ok) return;
+
+        const body = { username, email, password, rol, estado: 1 };
+        const url = id ? `/usuarios/${id}` : '/usuarios';
+        const method = id ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+            credentials: 'include'
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (r.ok) {
+                modal.hide();
+                mostrarAlerta(id ? 'Usuario actualizado' : 'Usuario creado', 'success');
+                cargarUsuarios();
+            } else {
+                mostrarAlerta(data.error || 'Error al guardar', 'danger');
+            }
+        });
+    }
+
+    function marcarError(campo, msg) {
+        document.getElementById('usr-'+campo).classList.add('is-invalid');
+        document.getElementById('err-'+campo).textContent = msg;
+    }
+
+    function eliminar(id) {
+        if (!confirm('¿Eliminar este usuario?')) return;
+        fetch(`/usuarios/${id}`, { method: 'DELETE', credentials: 'include' })
+            .then(r => {
+                if (r.ok) { mostrarAlerta('Usuario eliminado', 'success'); cargarUsuarios(); }
+                else mostrarAlerta('No se puede eliminar', 'danger');
+            });
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+        setTimeout(() => a.classList.add('d-none'), 4000);
+    }
+</script>
+</body>
+</html>

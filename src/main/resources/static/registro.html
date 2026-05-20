@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KinalApp - Registro</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-light">
+
+<div class="container">
+    <div class="auth-card card" style="max-width:480px">
+        <div class="auth-header">
+            <h3>🏫 KINAL APP</h3>
+            <p>Crear nueva cuenta</p>
+        </div>
+        <div class="card-body p-4">
+
+            <div id="alerta" class="alert d-none mb-3"></div>
+
+            <h5 class="mb-4 text-center text-secondary">Registrarse</h5>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Nombre de usuario <span class="text-danger">*</span></label>
+                <input type="text" id="username" class="form-control" placeholder="Mínimo 3 caracteres">
+                <div class="invalid-feedback" id="err-username"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Correo electrónico <span class="text-danger">*</span></label>
+                <input type="email" id="email" class="form-control" placeholder="ejemplo@correo.com">
+                <div class="invalid-feedback" id="err-email"></div>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="password" class="form-control" placeholder="Mínimo 6 caracteres">
+                <div class="invalid-feedback" id="err-password"></div>
+            </div>
+
+            <div class="mb-4">
+                <label class="form-label fw-semibold">Confirmar contraseña <span class="text-danger">*</span></label>
+                <input type="password" id="confirmar" class="form-control" placeholder="Repite tu contraseña">
+                <div class="invalid-feedback" id="err-confirmar"></div>
+            </div>
+
+            <!-- El rol NO se puede escoger en el registro — siempre USER por defecto -->
+            <!-- Solo un ADMIN puede cambiar el rol de otro usuario desde el panel -->
+            <div class="alert alert-info py-2 mb-3" style="font-size:0.85rem">
+                ℹ️ Las cuentas nuevas se crean como <strong>Usuario</strong>.
+                Solo un administrador puede asignar el rol ADMIN.
+            </div>
+
+            <button class="btn btn-kinal" onclick="registrar()">Crear Cuenta</button>
+
+            <hr>
+            <p class="text-center mb-0 text-muted">
+                ¿Ya tienes cuenta?
+                <a href="login.html" class="text-decoration-none fw-semibold">Inicia sesión</a>
+            </p>
+        </div>
+    </div>
+</div>
+
+<script>
+    function limpiarErrores() {
+        ['username','email','password','confirmar'].forEach(id => {
+            document.getElementById(id).classList.remove('is-invalid');
+            document.getElementById('err-'+id).textContent = '';
+        });
+    }
+
+    function marcarError(campo, msg) {
+        document.getElementById(campo).classList.add('is-invalid');
+        document.getElementById('err-'+campo).textContent = msg;
+    }
+
+    function mostrarAlerta(msg, tipo) {
+        const a = document.getElementById('alerta');
+        a.className = `alert alert-${tipo}`;
+        a.textContent = msg;
+    }
+
+    function validar() {
+        limpiarErrores();
+        let ok = true;
+        const u = document.getElementById('username').value.trim();
+        const e = document.getElementById('email').value.trim();
+        const p = document.getElementById('password').value;
+        const c = document.getElementById('confirmar').value;
+
+        if (!u) { marcarError('username', 'El usuario es obligatorio'); ok = false; }
+        else if (u.length < 3) { marcarError('username', 'Mínimo 3 caracteres'); ok = false; }
+
+        if (!e) { marcarError('email', 'El correo es obligatorio'); ok = false; }
+        else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+            marcarError('email', 'El correo no tiene un formato válido'); ok = false;
+        }
+
+        if (!p) { marcarError('password', 'La contraseña es obligatoria'); ok = false; }
+        else if (p.length < 6) { marcarError('password', 'Mínimo 6 caracteres'); ok = false; }
+
+        if (!c) { marcarError('confirmar', 'Debes confirmar tu contraseña'); ok = false; }
+        else if (p !== c) { marcarError('confirmar', 'Las contraseñas no coinciden'); ok = false; }
+
+        return ok;
+    }
+
+    function registrar() {
+        if (!validar()) return;
+
+        const datos = {
+            username: document.getElementById('username').value.trim(),
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value,
+            rol: 'USER'  // Siempre USER al registrarse
+        };
+
+        fetch('/api/auth/registro', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(datos),
+            credentials: 'include'
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (r.ok) {
+                mostrarAlerta('¡Cuenta creada! Redirigiendo al login...', 'success');
+                setTimeout(() => window.location.href = '/login.html', 2000);
+            } else {
+                mostrarAlerta(data.error || 'Error al registrar', 'danger');
+            }
+        })
+        .catch(() => mostrarAlerta('Error de conexión con el servidor', 'danger'));
+    }
+</script>
+</body>
+</html>
